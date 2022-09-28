@@ -1,0 +1,610 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<script type="text/javascript">
+var gl;
+var shaderProgram;
+var uPMatrix;
+var vertexPositionBuffer;
+var vertexColorBuffer;
+var playerPositionX = 0;
+var playerPositionY = 0;
+var firstIteration = true;
+var buildIsGood = false;
+
+mapArray = [
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 9, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 3, 0]
+  ]
+
+
+function findBuilder(number = 9){
+  for (let i=0; i<10; i++){
+    for(let j=0; j<10; j++){
+      if(mapArray[i][j]==number){
+          return[i, j]
+      }
+    }
+  } 
+}
+
+function moveInArray(direction, y, x){
+  if(direction == "u"){
+    return [y-1, x]
+  }
+  if(direction == "d"){
+    return [y+1, x]
+  }
+  if(direction == "r"){
+    return [y, x+1]
+  }
+  if(direction == "l"){
+    return [y, x-1]
+  }
+}
+
+function getRandomInt(max) {
+  return Math.floor(Math.random() * max);
+}
+
+function buildMapArray(){
+  directions = ["u", "d", "r", "l"];
+  blueprintArray = [
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 9, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 3, 0]
+  ];
+  copyBuildIsGood = window.buildIsGood
+
+
+  for (let i=0; i<60; i++){
+    BuilderDir = findBuilder();
+
+    //sprawdzanie czy builder jest w odleglosci 1 od konca
+    u = moveInArray(directions[0],BuilderDir[0], BuilderDir[1])
+    d = moveInArray(directions[1],BuilderDir[0], BuilderDir[1])
+    r = moveInArray(directions[2],BuilderDir[0], BuilderDir[1])
+    l = moveInArray(directions[3],BuilderDir[0], BuilderDir[1])
+    if(mapArray[u[0]][u[1]] == 3 || mapArray[d[0]][d[1]] == 3 || mapArray[r[0]][r[1]] == 3 || mapArray[l[0]][l[1]] == 3){
+      window.buildIsGood = true;
+      mapArray[BuilderDir[0]] [BuilderDir[1]] = 2;
+      populateWithCorridors()
+      mapArray[1][1] = 1;
+      window.playerPositionX = -3;
+      window.playerPositionY = 3;
+      break;
+    }
+
+    comitedDirection = getRandomInt(4)
+    dir = moveInArray(directions[comitedDirection],BuilderDir[0],BuilderDir[1])
+    if(dir[0]!=0 && dir[0]!=9 && dir[1]!=0 && dir[1]!=9){ //czy jest 
+      if(mapArray[dir[0]][dir[1]] != 2){                    //czy jest juz podloga
+
+        //sprawdzanie czy sa tworzone korytarze
+        u = moveInArray(directions[0],dir[0], dir[1])
+        d = moveInArray(directions[1],dir[0], dir[1])
+        r = moveInArray(directions[2],dir[0], dir[1])
+        l = moveInArray(directions[3],dir[0], dir[1])
+
+        if(mapArray[u[0]][u[1]] != 2 && mapArray[d[0]][d[1]] != 2 && mapArray[r[0]][r[1]] != 2 && mapArray[l[0]][l[1]] != 2){
+          mapArray[BuilderDir[0]] [BuilderDir[1]] = 2; 
+          mapArray[dir[0]] [dir[1]] = 9;
+        }
+
+      }
+    }
+    if(copyBuildIsGood == false){
+      mapArray = blueprintArray;
+    }
+  }
+
+}
+
+function populateWithCorridors(){
+  directions = ["u", "d", "r", "l"];
+
+
+  for (let i=1; i<9; i++){
+    for(let j=1; j<9; j++){
+      if(mapArray[i][j]==0){
+        conectors1 = 0
+        conectors2 = 0
+        u = moveInArray(directions[0], i, j)
+        d = moveInArray(directions[1], i, j)
+        r = moveInArray(directions[2], i, j)
+        l = moveInArray(directions[3], i, j)
+
+        if(mapArray[u[0]][u[1]] == 2){
+          conectors1 += 1
+        }
+        if(mapArray[d[0]][d[1]] == 2){
+          conectors1 += 1
+        }
+        if(mapArray[r[0]][r[1]] == 2){
+          conectors1 += 1
+        }
+        if(mapArray[l[0]][l[1]] == 2){
+          conectors1 += 1
+        }
+        if(conectors1 == 1){
+          comitedDirection = getRandomInt(4)
+          dir = moveInArray(directions[comitedDirection], i, j)
+          mapArray[i][j] = 2
+        }
+      }
+    }
+  } 
+}
+
+
+function checkIfMovementPossible(keymov){
+  blueprintArray = [
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 9, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 3, 0]
+  ];
+  var keyLeft   = 37;
+  var keyRight  = 39;
+  var keyUp     = 38;
+  var keyDown   = 40;
+  directions = ["u", "d", "r", "l"];
+  playerDir = findBuilder(1)
+
+  row = playerDir[0]
+  col = playerDir[1]
+  u = moveInArray(directions[0],BuilderDir[0], BuilderDir[1])
+  d = moveInArray(directions[1],BuilderDir[0], BuilderDir[1])
+  r = moveInArray(directions[2],BuilderDir[0], BuilderDir[1])
+  l = moveInArray(directions[3],BuilderDir[0], BuilderDir[1])
+
+
+  if(keymov == keyLeft){
+    if(mapArray[row][col-1] == 3){
+      window.buildIsGood = false
+      window.mapArray = blueprintArray
+    }
+
+    if(mapArray[row][col-1] == 2){
+      mapArray[row][col-1] = 1
+      mapArray[row][col] = 2
+      return true
+    }
+  }
+
+  if(keymov == keyRight){
+    if(mapArray[row][col+1] == 3){
+      window.buildIsGood = false
+      window.mapArray = blueprintArray
+    }
+
+    if(mapArray[row][col+1] == 2){
+      mapArray[row][col+1] = 1
+      mapArray[row][col] = 2
+      return true
+    }
+  }
+
+  if(keymov == keyUp){
+    if(mapArray[row-1][col] == 3){
+      window.buildIsGood = false
+      window.mapArray = blueprintArray
+    }
+
+    if(mapArray[row-1][col] == 2){
+      mapArray[row-1][col] = 1
+      mapArray[row][col] = 2
+      return true
+    }
+  }
+  if(keymov == keyDown){
+    if(mapArray[row+1][col] == 3){
+      window.buildIsGood = false
+      window.mapArray = blueprintArray
+    }
+
+    if(mapArray[row+1][col] == 2){
+      mapArray[row+1][col] = 1
+      mapArray[row][col] = 2
+      return true
+    }
+  }
+  
+  return false
+}
+
+function enclouseWall(X, Y, vertArray, colorArray, color1, color2){
+  tempArray = [
+    X-0.5, Y+0.5, 0.0,  X-0.5, Y+0.5, +1.0,  X+0.5, Y+0.5, +1.0,
+    X-0.5, Y+0.5, 0.0,  X+0.5, Y+0.5, +1.0,  X+0.5, Y+0.5,  0.0,
+  
+    X-0.5, Y-0.5, +1.0,  X-0.5, Y+0.5, +1.0,  X-0.5, Y-0.5, 0.0,
+    X-0.5, Y-0.5, 0.0,  X-0.5, Y+0.5, +1.0,  X-0.5, Y+0.5, 0.0,
+  
+    X+0.5, Y+0.5, +1.0,  X+0.5, Y-0.5, +1.0,  X+0.5, Y-0.5, 0.0,
+    X+0.5, Y+0.5, +1.0,  X+0.5, Y-0.5, 0.0,  X+0.5, Y+0.5, 0.0,
+    
+    X+0.5, Y-0.5, +1.0,  X+0.5, Y+0.5, +1.0,  X-0.5, Y-0.5, +1.0,
+    X-0.5, Y+0.5, +1.0,  X-0.5, Y-0.5, +1.0,  X+0.5, Y+0.5, +1.0,
+    //góra
+    X-0.5, Y-0.5, +1.0,  X-0.5, Y-0.5, 0.0,  X+0.5, Y-0.5, +1.0,
+    X+0.5, Y-0.5, +1.0,  X-0.5, Y-0.5, 0.0,  X+0.5, Y-0.5, 0.0
+  ]
+  returnVertArray = vertArray.concat(tempArray)
+
+  for(let i=0; i<4; i++){
+    colorArray = colorArray.concat(color1)
+  }
+  colorArray = colorArray.concat(color2)
+
+  return [returnVertArray, colorArray]
+}
+
+function addVert(X, Y, vertArray, colorArray, type){
+  tempArray = [
+    X+0.5, Y-0.5, 0.0,  X+0.5, Y+0.5, 0.0,  X-0.5, Y-0.5, 0.0,
+    X-0.5, Y+0.5, 0.0,  X-0.5, Y-0.5, 0.0,  X+0.5, Y+0.5, 0.0,
+  ]
+  returnVertArray = vertArray.concat(tempArray)
+  if(type == "ground"){
+    tempArray2 = [
+    0.0, 0.0, 1.0,  0.0, 0.0, 1.0,  0.0, 0.0, 1.0,
+    0.0, 0.0, 1.0,  0.0, 0.0, 1.0,  0.0, 0.0, 1.0,
+  ]
+  }
+  if(type == "builder"){
+    tempArray2 = [
+    1.0, 1.0, 1.0,  1.0, 1.0, 1.0,  1.0, 1.0, 1.0,
+    1.0, 1.0, 1.0,  1.0, 1.0, 1.0,  1.0, 1.0, 1.0,
+  ]
+  }
+
+  if(type == "wall"){
+    tempArray2 = [
+    0.0, 1.0, 1.0,  0.0, 1.0, 1.0,  0.0, 1.0, 1.0,
+    0.0, 1.0, 1.0,  0.0, 1.0, 1.0,  0.0, 1.0, 1.0,
+  ]
+  color1 = [
+    0.0, 1.0, 1.0,  0.0, 1.0, 1.0,  0.0, 1.0, 1.0,
+    0.0, 1.0, 1.0,  0.0, 1.0, 1.0,  0.0, 1.0, 1.0,
+  ]
+  color2 = [
+    1.0, 1.0, 0.0,  1.0, 1.0, 0.0,  1.0, 1.0, 0.0,
+    1.0, 1.0, 0.0,  1.0, 1.0, 0.0,  1.0, 1.0, 0.0,
+  ]
+    temp = enclouseWall(X, Y, returnVertArray, colorArray, color1, color2)
+    returnVertArray = temp[0]
+    colorArray      = temp[1]
+  }
+  if(type == "player"){
+    tempArray2 = [
+    1.0, 0.0, 0.0,  1.0, 0.0, 0.0,  1.0, 0.0, 0.0,
+    1.0, 0.0, 0.0,  1.0, 0.0, 0.0,  1.0, 0.0, 0.0,
+  ]
+  color1 = [
+    1.0, 0.0, 0.0,  1.0, 0.0, 0.0,  1.0, 0.0, 0.0,
+    1.0, 0.0, 0.0,  1.0, 0.0, 0.0,  1.0, 0.0, 0.0,
+  ]
+  color2 = [
+    1.0, 0.0, 0.0,  1.0, 0.0, 0.0,  1.0, 0.0, 0.0,
+    1.0, 0.0, 0.0,  1.0, 0.0, 0.0,  1.0, 0.0, 0.0,
+  ]
+  temp = enclouseWall(X, Y, returnVertArray, colorArray, color1, color2)
+    returnVertArray = temp[0]
+    colorArray      = temp[1]
+  }
+  if(type == "end"){
+    tempArray2 = [
+    0.0, 1.0, 0.0,  0.0, 1.0, 0.0,  0.0, 1.0, 0.0,
+    0.0, 1.0, 0.0,  0.0, 1.0, 0.0,  0.0, 1.0, 0.0,
+  ]
+  }
+  colorArray = colorArray.concat(tempArray2)
+  
+  return [returnVertArray, colorArray]
+}
+
+function makeMap(vertArray, colorArray, mapArray){
+  yAxis = 4,5;
+  for (let i=0; i<10; i++){
+    xAxis = -4,5;
+    for(let j=0; j<10; j++){
+      if(mapArray[i][j] == 0){
+        type = "wall"
+      }
+      if(mapArray[i][j] == 2){
+        type = "ground"
+      }
+      if(mapArray[i][j] == 3){
+        type = "end"
+      }
+      if(mapArray[i][j] == 9){
+        type = "builder"
+      }
+      if(mapArray[i][j] == 1){
+        if(firstIteration == true){
+          firstIteration = false;
+          playerPositionX = xAxis;
+          playerPositionY = yAxis;
+        }
+        type = "ground"
+      }
+      temp = addVert(xAxis, yAxis, vertArray, colorArray, type)
+      vertArray   = temp[0];
+      colorArray  = temp[1];
+      xAxis = xAxis + 1;
+
+    }
+    yAxis = yAxis - 1;
+  }
+
+  temp = addVert(playerPositionX, playerPositionY, vertArray, colorArray, "player")
+  vertArray   = temp[0];
+  colorArray  = temp[1];
+  
+
+  return [vertArray, colorArray]
+}
+
+function MatrixMul(a,b) //Mnożenie macierzy
+{
+  c = [
+  0,0,0,0,
+  0,0,0,0,
+  0,0,0,0,
+  0,0,0,0
+  ]
+  for(let i=0;i<4;i++)
+  {
+    for(let j=0;j<4;j++)
+    {
+      c[i*4+j] = 0.0;
+      for(let k=0;k<4;k++)
+      {
+        c[i*4+j]+= a[i*4+k] * b[k*4+j];
+      }
+    }
+  }
+  return c;
+}
+
+function startGL() 
+{
+  //rozwiazanie, ktorego nie udalo mi sie pominac, z jakiegos powodu nie dziala tu petla
+  while(window.buildIsGood == false){
+    buildMapArray()
+  }
+  let canvas = document.getElementById("canvas3D"); //wyszukanie obiektu w strukturze strony 
+  gl = canvas.getContext("experimental-webgl"); //pobranie kontekstu OpenGL'u z obiektu canvas
+  gl.viewportWidth = canvas.width; //przypisanie wybranej przez nas rozdzielczości do systemu OpenGL
+  gl.viewportHeight = canvas.height;
+  
+    //Kod shaderów
+  const vertextShaderSource = ` //Znak akcentu z przycisku tyldy - na lewo od przycisku 1 na klawiaturze
+    precision highp float;
+    attribute vec3 aVertexPosition; 
+    attribute vec3 aVertexColor;
+    uniform mat4 uMVMatrix;
+    uniform mat4 uPMatrix;
+    varying vec3 vColor;
+    void main(void) {
+      gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0); //Dokonanie transformacji położenia punktów z przestrzeni 3D do przestrzeni obrazu (2D)
+      vColor = aVertexColor;
+    }
+  `;
+  const fragmentShaderSource = `
+    precision highp float;
+    varying vec3 vColor;
+    void main(void) {
+      gl_FragColor = vec4(vColor,1.0); //Ustalenie stałego koloru wszystkich punktów sceny
+    }
+  `;
+  let fragmentShader = gl.createShader(gl.FRAGMENT_SHADER); //Stworzenie obiektu shadera 
+  let vertexShader   = gl.createShader(gl.VERTEX_SHADER);
+  gl.shaderSource(fragmentShader, fragmentShaderSource); //Podpięcie źródła kodu shader
+  gl.shaderSource(vertexShader, vertextShaderSource);
+  gl.compileShader(fragmentShader); //Kompilacja kodu shader
+  gl.compileShader(vertexShader);
+  if (!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS)) { //Sprawdzenie ewentualnych błedów kompilacji
+    alert(gl.getShaderInfoLog(fragmentShader));
+    return null;
+  }
+  if (!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS)) {
+    alert(gl.getShaderInfoLog(vertexShader));
+    return null;
+  }
+  
+  shaderProgram = gl.createProgram(); //Stworzenie obiektu programu 
+  gl.attachShader(shaderProgram, vertexShader); //Podpięcie obu shaderów do naszego programu wykonywanego na karcie graficznej
+  gl.attachShader(shaderProgram, fragmentShader);
+  gl.linkProgram(shaderProgram);
+  if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) alert("Could not initialise shaders");  //Sprawdzenie ewentualnych błedów
+  
+  //Opis sceny 3D, położenie punktów w przestrzeni 3D w formacie X,Y,Z 
+  
+  
+  
+  let vertexPosition = [
+  ]
+  let vertexColor = [
+  ]
+  temp = makeMap(vertexPosition, vertexColor, mapArray);
+  vertexPosition = temp[0];
+  vertexColor    = temp[1];
+
+  //let vertexPosition = [
+  //0+0.5, 0-0.5, 0.0,  0+0.5, 0+0.5, 0.0,  0-0.5, 0-0.5, 0.0,
+  //0-0.5, 0+0.5, 0.0,  0-0.5, 0-0.5, 0.0,  0+0.5, 0+0.5, 0.0,
+  //]
+  //let vertexColor = [
+  //  1.0, 0.0, 0.0,  1.0, 0.0, 0.0,  1.0, 0.0, 0.0,
+  //  1.0, 0.0, 0.0,  1.0, 0.0, 0.0,  1.0, 0.0, 0.0,
+  //]
+
+  
+
+  vertexPositionBuffer = gl.createBuffer(); //Stworzenie tablicy w pamieci karty graficznej
+  gl.bindBuffer(gl.ARRAY_BUFFER, vertexPositionBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexPosition), gl.STATIC_DRAW);
+  vertexPositionBuffer.itemSize = 3; //zdefiniowanie liczby współrzednych per wierzchołek
+  vertexPositionBuffer.numItems = 5000; //Zdefinoiowanie liczby punktów w naszym buforze
+  
+
+
+  vertexColorBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, vertexColorBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexColor), gl.STATIC_DRAW);
+  vertexColorBuffer.itemSize = 3;
+  vertexColorBuffer.numItems = 1000;
+
+
+  
+  //Macierze opisujące położenie wirtualnej kamery w przestrzenie 3D
+  let aspect = gl.viewportWidth/gl.viewportHeight;
+  let fov = 150.0 * Math.PI / 180.0; //Określenie pola widzenia kamery
+  let zFar = 100.0; //Ustalenie zakresów renderowania sceny 3D (od obiektu najbliższego zNear do najdalszego zFar)
+  let zNear = 0.1;
+  uPMatrix = [
+   1.0/(aspect*Math.tan(fov/2)),0                           ,0                         ,0                            ,
+   0                         ,1.0/(Math.tan(fov/2))         ,0                         ,0                            ,
+   0                         ,0                           ,-(zFar+zNear)/(zFar-zNear)  , -1,
+   0                         ,0                           ,-(2*zFar*zNear)/(zFar-zNear) ,0.0,
+  ];
+  Tick();
+} 
+//let angle = 45.0; //Macierz transformacji świata - określenie położenia kamery
+var angleZ = 0.0;
+var angleY = 0.0;
+var angleX = 0.0;
+var tz = -5.0;
+function Tick()
+{  
+  let uMVMatrix = [
+  1,0,0,0, //Macierz jednostkowa
+  0,1,0,0,
+  0,0,1,0,
+  0,0,0,1
+  ];
+  
+  let uMVRotZ = [
+  +Math.cos(angleZ*Math.PI/180.0),+Math.sin(angleZ*Math.PI/180.0),0,0,
+  -Math.sin(angleZ*Math.PI/180.0),+Math.cos(angleZ*Math.PI/180.0),0,0,
+  0,0,1,0,
+  0,0,0,1
+  ];
+  
+  let uMVRotY = [
+  +Math.cos(angleY*Math.PI/180.0),0,-Math.sin(angleY*Math.PI/180.0),0,
+  0,1,0,0,
+  +Math.sin(angleY*Math.PI/180.0),0,+Math.cos(angleY*Math.PI/180.0),0,
+  0,0,0,1
+  ];
+  
+  let uMVRotX = [
+  1,0,0,0,
+  0,+Math.cos(angleX*Math.PI/180.0),+Math.sin(angleX*Math.PI/180.0),0,
+  0,-Math.sin(angleX*Math.PI/180.0),+Math.cos(angleX*Math.PI/180.0),0,
+  0,0,0,1
+  ];
+  
+  let uMVTranslateZ = [
+  1,0,0,0,
+  0,1,0,0,
+  0,0,1,0,
+  0,0,tz,1
+  ];
+
+
+
+  uMVMatrix = MatrixMul(uMVMatrix,uMVRotX);
+  uMVMatrix = MatrixMul(uMVMatrix,uMVRotY);
+  uMVMatrix = MatrixMul(uMVMatrix,uMVRotZ);
+  uMVMatrix = MatrixMul(uMVMatrix,uMVTranslateZ);
+  //alert(uPMatrix);
+  
+  //Render Scene
+  
+  gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight); 
+  gl.clearColor(0.0, 0.5, 0.0, 1.0); //Wyczyszczenie obrazu kolorem czerwonym
+  gl.clearDepth(1.0);             //Wyczyścienie bufora głebi najdalszym planem
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  gl.useProgram(shaderProgram)   //Użycie przygotowanego programu shaderowego
+  
+  gl.enable(gl.DEPTH_TEST);           // Włączenie testu głębi - obiekty bliższe mają przykrywać obiekty dalsze
+  gl.depthFunc(gl.LEQUAL);            // 
+  
+  gl.uniformMatrix4fv(gl.getUniformLocation(shaderProgram, "uPMatrix"), false, new Float32Array(uPMatrix)); //Wgranie macierzy kamery do pamięci karty graficznej
+  gl.uniformMatrix4fv(gl.getUniformLocation(shaderProgram, "uMVMatrix"), false, new Float32Array(uMVMatrix));
+  
+  gl.enableVertexAttribArray(gl.getAttribLocation(shaderProgram, "aVertexPosition"));  //Przekazanie położenia
+  gl.bindBuffer(gl.ARRAY_BUFFER, vertexPositionBuffer);
+  gl.vertexAttribPointer(gl.getAttribLocation(shaderProgram, "aVertexPosition"), vertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+  
+  gl.enableVertexAttribArray(gl.getAttribLocation(shaderProgram, "aVertexColor"));  //Przekazanie kolorów
+  gl.bindBuffer(gl.ARRAY_BUFFER, vertexColorBuffer);
+  gl.vertexAttribPointer(gl.getAttribLocation(shaderProgram, "aVertexColor"), vertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+  
+  gl.drawArrays(gl.TRIANGLES, 0, vertexPositionBuffer.numItems*vertexPositionBuffer.itemSize); //Faktyczne wywołanie rendrowania
+   
+  setTimeout(Tick,100);
+}
+function handlekeydown(e)
+{
+ if(e.keyCode==87) angleX=angleX+1.0; //W
+ if(e.keyCode==83) angleX=angleX-1.0; //S
+ if(e.keyCode==68) angleY=angleY+1.0;
+ if(e.keyCode==65) angleY=angleY-1.0;
+ if(e.keyCode==81) angleZ=angleZ+1.0;
+ if(e.keyCode==69) angleZ=angleZ-1.0;
+
+ if(e.keyCode==38){ //up
+  if(checkIfMovementPossible(e.keyCode)){
+    playerPositionY=playerPositionY+1.0;
+  }
+ }
+ if(e.keyCode==40){ //down
+  if(checkIfMovementPossible(e.keyCode)){
+    playerPositionY=playerPositionY-1.0;
+  }
+ }
+ if(e.keyCode==39){ //right
+  if(checkIfMovementPossible(e.keyCode)){
+    playerPositionX=playerPositionX+1.0;
+  }
+ }
+ if(e.keyCode==37){ //left
+  if(checkIfMovementPossible(e.keyCode)){
+    playerPositionX=playerPositionX-1.0;
+  }
+ }
+ startGL();
+ //alert(e.keyCode);
+ //alert(angleX);
+}
+</script>
+</head>
+<body onload="startGL()" onkeydown="handlekeydown(event)">
+<canvas id="canvas3D" width="640" height="480" style="border: solid black 1px"> </canvas>
+</body>
+</html>
